@@ -1,11 +1,9 @@
 import warnings
 import os
 
-# 屏蔽未来弃用警告和用户警告
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-# 避免loky并行库报错，限制使用1个CPU核
 os.environ["LOKY_MAX_CPU_COUNT"] = "1"
 
 import pandas as pd
@@ -74,16 +72,28 @@ def train_knn(X_train, y_train, X_test, y_test):
     accuracies_train = []
     accuracies_test = []
     k_range = range(1, 101)
+
     for k in k_range:
         model = KNeighborsClassifier(n_neighbors=k)
         model.fit(X_train, y_train)
+
         y_pred_train = model.predict(X_train)
         y_pred_test = model.predict(X_test)
-        accuracies_train.append(accuracy_score(y_train, y_pred_train))
-        accuracies_test.append(accuracy_score(y_test, y_pred_test))
 
-    # Plot accuracy vs. k
-    plt.figure(figsize=(10,6))
+        acc_train = accuracy_score(y_train, y_pred_train)
+        acc_test = accuracy_score(y_test, y_pred_test)
+
+        accuracies_train.append(acc_train)
+        accuracies_test.append(acc_test)
+
+        # 隐藏逐行输出，只保留最终结果和图像
+
+    best_k = accuracies_test.index(max(accuracies_test)) + 1
+    best_train_acc = accuracies_train[best_k - 1]
+    best_test_acc = accuracies_test[best_k - 1]
+
+    # 绘图保存
+    plt.figure(figsize=(10, 6))
     plt.plot(k_range, accuracies_train, label='Train Accuracy')
     plt.plot(k_range, accuracies_test, label='Test Accuracy')
     plt.xlabel("k")
@@ -92,9 +102,24 @@ def train_knn(X_train, y_train, X_test, y_test):
     plt.legend()
     plt.grid()
     plt.savefig("screenshots/knn_accuracy.png")
-    plt.show()
+    plt.close()
 
-    print(f"\nBest test accuracy: {max(accuracies_test):.4f} at k = {accuracies_test.index(max(accuracies_test))+1}")
+    print(f"\nBest test accuracy: {best_test_acc:.4f} at k = {best_k}")
+    print(f"Corresponding train accuracy: {best_train_acc:.4f}")
+
+    # 使用最佳 k 进行最终模型评估
+    best_model = KNeighborsClassifier(n_neighbors=best_k)
+    best_model.fit(X_train, y_train)
+
+    final_train_pred = best_model.predict(X_train)
+    final_test_pred = best_model.predict(X_test)
+
+    final_train_acc = accuracy_score(y_train, final_train_pred)
+    final_test_acc = accuracy_score(y_test, final_test_pred)
+
+    print(f"Final train accuracy with k = {best_k}: {final_train_acc:.4f}")
+    print(f"Final test accuracy with k = {best_k}: {final_test_acc:.4f}")
+
 
 # Main function to run all steps
 def main():
